@@ -172,6 +172,7 @@ void read_strings(int fd, char*** ptr_buffer, int* res_size) { // Считыва
     *ptr_buffer = buffer;
 }
 
+// str[4] = get_string();
 void read_string(int fd, char** str, size_t* size) { // Считывает одну строку
     char c; // Текущий считываемый символ
     size_t str_len = 0;
@@ -269,6 +270,13 @@ int main() {
         exit(ERR_MMAP);
     }
 
+    int* sig = mmap(NULL, sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED | MAP_ANONYMOUS, -1, 0);
+    if (sig == MAP_FAILED) {
+        perror("mmap error");
+        exit(ERR_MMAP);
+    }
+    *sig = CHILD_BLOCK;
+
     printf("Enter path to file:\n");
     char* path;
     size_t path_size = 0;
@@ -282,6 +290,8 @@ int main() {
         exit(ERR_FORK);
     } else if (id == 0) {
         // Ребенок
+        while (*sig == CHILD_BLOCK) {}
+        
         size_t size = m_file[0];
         int divident = m_file[1];
         int divisor = 1;
@@ -300,7 +310,7 @@ int main() {
         char s[length];
         int_to_string(s, res);
 
-        int fp = open(path, O_CREAT | O_WRONLY); // создаем, если не сущ., только для записи
+        int fp = open(path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); // создаем, если не сущ., только для записи
         if (fp == -1) { // Если не получилось открыть файл
             free(path);
             close(fp);
@@ -308,6 +318,7 @@ int main() {
         }
         write_to_fd(fp, s, sizeof(char) * length);
         close(fp);
+        *sig = CHILD_BLOCK;
         exit(0);
     } else {
         // Родитель, id = child_id
@@ -338,9 +349,9 @@ int main() {
         for (size_t i = 0; i < size + 1; ++i) {
             printf("m_file[%zu] %d\n", i, m_file[i]);
         }
-
         free(strs);
 
+        *sig = PAR_BLOCK;
         if (waitpid(id, &status, 0) == -1) {
             perror("wait() error\n");
             exit(ERR_WAIT);
