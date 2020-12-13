@@ -307,10 +307,10 @@ int main() {
 
         int res = divident / divisor;
         int length = get_int_length(res);
-        char s[length];
+        char s[length+1];
         int_to_string(s, res);
 
-        int fp = open(path, O_CREAT | O_WRONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH); // создаем, если не сущ., только для записи
+        int fp = open(path, O_CREAT | O_WRONLY); // создаем, если не сущ., только для записи
         if (fp == -1) { // Если не получилось открыть файл
             free(path);
             close(fp);
